@@ -82,6 +82,6 @@ void main(int argc, char *argv[])
 	psnr_v /= frames;
 	long bin_length = _filelength(_fileno(fp_bin));
 	double bitrate = 1.0f * bin_length * fps * 8 / frames / 1000;
-	printf("%.4f %.4f %.4f %.4f", bitrate, psnr_y, psnr_u, psnr_v);
+	printf("%.4f\t%.4f\t%.4f\t%.4f\n", bitrate, psnr_y, psnr_u, psnr_v);
 	return;
 }
