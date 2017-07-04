@@ -7,18 +7,19 @@ using namespace std;
 
 void main(int argc, char *argv[])
 {
-	if (argc != 8)
+	if (argc != 9)
 	{
-		printf("usage \n psnr.exe width height fps framenumber orig test_yuv test_bin\n");
+		printf("usage \n psnr.exe width height bitdepth fps framenumber orig test_yuv test_bin\n");
 		return;
 	}
 	int width = stol(argv[1]);
 	int height = stol(argv[2]);
-	int fps = stol(argv[3]);
-	int frames = stol(argv[4]);
-	string file_orig = string(argv[5]);
-	string file_test_yuv = string(argv[6]);
-	string file_test_bin = string(argv[7]);
+	int bitdepth = stoi(argv[3]);
+	int fps = stol(argv[4]);
+	int frames = stol(argv[5]);
+	string file_orig = string(argv[6]);
+	string file_test_yuv = string(argv[7]);
+	string file_test_bin = string(argv[8]);
 	
 	long long size = width * height;
 	FILE * fp_orig = fopen(file_orig.c_str(), "rb");
@@ -39,12 +40,31 @@ void main(int argc, char *argv[])
 		printf("open bin file error!\n");
 		return;
 	}
-	unsigned char *y_orig = new unsigned char[size];
-	unsigned char *u_orig = new unsigned char[size / 4];
-	unsigned char *v_orig = new unsigned char[size / 4];
-	unsigned char *y = new unsigned char[size];
-	unsigned char *u = new unsigned char[size / 4];
-	unsigned char *v = new unsigned char[size / 4];
+	void *y_orig, *u_orig, *v_orig;
+	void *y, *u, *v;
+	if (bitdepth == 8)
+	{
+		y_orig = static_cast<void*>(new unsigned char[size]);
+		u_orig = static_cast<void*>(new unsigned char[size / 4]);
+		v_orig = static_cast<void*>(new unsigned char[size / 4]);
+		y = static_cast<void*>(new unsigned char[size]);
+		u = static_cast<void*>(new unsigned char[size / 4]);
+		v = static_cast<void*>(new unsigned char[size / 4]);
+	}
+	else if (bitdepth > 8 && bitdepth <= 16)
+	{
+		y_orig = static_cast<void*>(new unsigned short[size]);
+		u_orig = static_cast<void*>(new unsigned short[size / 4]);
+		v_orig = static_cast<void*>(new unsigned short[size / 4]);
+		y = static_cast<void*>(new unsigned short[size]);
+		u = static_cast<void*>(new unsigned short[size / 4]);
+		v = static_cast<void*>(new unsigned short[size / 4]);
+	}
+	else
+	{
+		printf("invalid bitdepth!\n");
+		return;
+	}
 	
 	double psnr_y = 0.0f;
 	double psnr_u = 0.0f;
@@ -56,32 +76,72 @@ void main(int argc, char *argv[])
 		long long count_u = 0;
 		long long count_v = 0;
 		
-		fread(y_orig, 1, size, fp_orig);
-		fread(y, 1, size, fp);
-		fread(u_orig, 1, size / 4, fp_orig);
-		fread(u, 1, size / 4, fp);
-		fread(v_orig, 1, size / 4, fp_orig);
-		fread(v, 1, size / 4, fp);
-		
-		for (auto k = 0; k < size; k++)
+		if (bitdepth == 8)
 		{
-			count_y += (y[k] - y_orig[k]) * (y[k] - y_orig[k]);
+			fread(y_orig, 1, size, fp_orig);
+			fread(y, 1, size, fp);
+			fread(u_orig, 1, size / 4, fp_orig);
+			fread(u, 1, size / 4, fp);
+			fread(v_orig, 1, size / 4, fp_orig);
+			fread(v, 1, size / 4, fp);
 		}
-		for (auto k = 0; k < size / 4; k++)
+		else
 		{
-			count_u += (u[k] - u_orig[k]) * (u[k] - u_orig[k]);
-			count_v += (v[k] - v_orig[k]) * (v[k] - v_orig[k]);
+			fread(y_orig, 1, size * sizeof(unsigned short), fp_orig);
+			fread(y, 1, size * sizeof(unsigned short), fp);
+			fread(u_orig, 1, size / 4 * sizeof(unsigned short), fp_orig);
+			fread(u, 1, size / 4 * sizeof(unsigned short), fp);
+			fread(v_orig, 1, size / 4 * sizeof(unsigned short), fp_orig);
+			fread(v, 1, size / 4 * sizeof(unsigned short), fp);
 		}
 		
-		psnr_y += 10.0f * log10(size * 255 * 255 / count_y);
-		psnr_u += 10.0f * log10(size / 4 * 255 * 255 / count_u);
-		psnr_v += 10.0f * log10(size / 4 * 255 * 255 / count_v);
+		if (bitdepth == 8)
+		{
+			unsigned char * _y = static_cast<unsigned char *>(y);
+			unsigned char * _u = static_cast<unsigned char *>(u);
+			unsigned char * _v = static_cast<unsigned char *>(v);
+			unsigned char * _y_orig = static_cast<unsigned char *>(y_orig);
+			unsigned char * _u_orig = static_cast<unsigned char *>(u_orig);
+			unsigned char * _v_orig = static_cast<unsigned char *>(v_orig);
+			for (auto k = 0; k < size; k++)
+			{
+				count_y += ((int)(_y[k]) - (int)(_y_orig[k])) * ((int)(_y[k]) - (int)(_y_orig[k]));
+			}
+			for (auto k = 0; k < size / 4; k++)
+			{
+				count_u += ((int)(_u[k]) - (int)(_u_orig[k])) * ((int)(_u[k]) - (int)(_u_orig[k]));
+				count_v += ((int)(_v[k]) - (int)(_v_orig[k])) * ((int)(_v[k]) - (int)(_v_orig[k]));
+			}
+		}
+		else
+		{
+			unsigned short * _y = static_cast<unsigned short *>(y);
+			unsigned short * _u = static_cast<unsigned short *>(u);
+			unsigned short * _v = static_cast<unsigned short *>(v);
+			unsigned short * _y_orig = static_cast<unsigned short *>(y_orig);
+			unsigned short * _u_orig = static_cast<unsigned short *>(u_orig);
+			unsigned short * _v_orig = static_cast<unsigned short *>(v_orig);
+			for (auto k = 0; k < size; k++)
+			{
+				count_y += ((int)(_y[k]) - (int)(_y_orig[k])) * ((int)(_y[k]) - (int)(_y_orig[k]));
+			}
+			for (auto k = 0; k < size / 4; k++)
+			{
+				count_u += ((int)(_u[k]) - (int)(_u_orig[k])) * ((int)(_u[k]) - (int)(_u_orig[k]));
+				count_v += ((int)(_v[k]) - (int)(_v_orig[k])) * ((int)(_v[k]) - (int)(_v_orig[k]));
+			}
+		}
+		
+		long long psnr_rate = ((1 << bitdepth) - 1) * ((1 << bitdepth) - 1);
+		psnr_y += 10.0f * log10((double)size * psnr_rate / count_y);
+		psnr_u += 10.0f * log10((double)size / 4 * psnr_rate / count_u);
+		psnr_v += 10.0f * log10((double)size / 4 * psnr_rate / count_v);
 	}
 	psnr_y /= frames;
 	psnr_u /= frames;
 	psnr_v /= frames;
 	long bin_length = _filelength(_fileno(fp_bin));
 	double bitrate = 1.0f * bin_length * fps * 8 / frames / 1000;
-	printf("%.4f\t%.4f\t%.4f\t%.4f\n", bitrate, psnr_y, psnr_u, psnr_v);
+	printf("%.4f\t%.4f\t%.4f\t%.4f\t", bitrate, psnr_y, psnr_u, psnr_v);
 	return;
 }
