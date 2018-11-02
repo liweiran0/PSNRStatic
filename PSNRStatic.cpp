@@ -1,16 +1,21 @@
 #define _FILE_OFFSET_BITS 64
 #include <stdio.h>
+#ifdef WIN32
 #include <io.h>
+#else
+#include <sys/stat.h>
+#endif
+#include <cmath>
 #include <string>
 
 using namespace std;
 
-void main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 	if (argc != 9)
 	{
 		printf("usage \n psnr.exe width height bitdepth fps framenumber orig test_yuv test_bin\n");
-		return;
+		return -1;
 	}
 	int width = stol(argv[1]);
 	int height = stol(argv[2]);
@@ -26,19 +31,19 @@ void main(int argc, char *argv[])
 	if (!fp_orig)
 	{
 		printf("open orig yuv file error!\n");
-		return;
+		return -1;
 	}
 	FILE * fp = fopen(file_test_yuv.c_str(), "rb");
 	if (!fp)
 	{
 		printf("open rec yuv file error!\n");
-		return;
+		return -1;
 	}
 	FILE * fp_bin = fopen(file_test_bin.c_str(), "rb");
 	if (!fp_bin)
 	{
 		printf("open bin file error!\n");
-		return;
+		return -1;
 	}
 	void *y_orig, *u_orig, *v_orig;
 	void *y, *u, *v;
@@ -63,7 +68,7 @@ void main(int argc, char *argv[])
 	else
 	{
 		printf("invalid bitdepth!\n");
-		return;
+		return -1;
 	}
 	
 	double psnr_y = 0.0f;
@@ -140,8 +145,18 @@ void main(int argc, char *argv[])
 	psnr_y /= frames;
 	psnr_u /= frames;
 	psnr_v /= frames;
+#ifdef WIN32
 	long bin_length = _filelength(_fileno(fp_bin));
+#else
+    long bin_length = -1;
+    struct stat statbuff;
+    if(stat(file_test_bin.c_str(), &statbuff) < 0){
+        bin_length = 0;
+    }else{
+        bin_length = statbuff.st_size;
+    }
+#endif
 	double bitrate = 1.0f * bin_length * fps * 8 / frames / 1000;
 	printf("%.4f\t%.4f\t%.4f\t%.4f\t", bitrate, psnr_y, psnr_u, psnr_v);
-	return;
+	return 0;
 }
