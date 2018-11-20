@@ -138,9 +138,9 @@ int main(int argc, char *argv[])
 		}
 		
 		long long psnr_rate = ((1 << bitdepth) - 1) * ((1 << bitdepth) - 1);
-		psnr_y += 10.0f * log10((double)size * psnr_rate / count_y);
-		psnr_u += 10.0f * log10((double)size / 4 * psnr_rate / count_u);
-		psnr_v += 10.0f * log10((double)size / 4 * psnr_rate / count_v);
+		psnr_y += 10.0f * log10((double)size * psnr_rate / (count_y == 0 ? 1 : count_y));
+		psnr_u += 10.0f * log10((double)size / 4 * psnr_rate / (count_u == 0 ? 1 : count_u));
+		psnr_v += 10.0f * log10((double)size / 4 * psnr_rate / (count_v == 0 ? 1 : count_v));
 	}
 	psnr_y /= frames;
 	psnr_u /= frames;
